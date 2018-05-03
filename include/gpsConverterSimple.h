@@ -45,6 +45,8 @@
  **********************************************************************/
 
 #include <cmath>
+#include <iostream>
+#include <cstdio>
 
 #ifndef RAD2DEG 
 #define RAD2DEG (180.0/M_PI)
@@ -60,10 +62,14 @@ namespace simplegps {
 const double C_EARTH = 40007960;
 const double R_EARTH = 6367464.59702282;
  
-struct gpsLatLon {
+struct latLon {
 	double lat;
 	double lon;
 };
+
+std::ostream &operator<<(std::ostream &os, latLon const &ll) {
+	return os << ll.lat << " N, " << ll.lon << " E";
+}
 
 //! This struct is for representing lat/lon in radians and is just for 
 //! preventing RAD/DEG errors.  
@@ -76,45 +82,45 @@ struct posNE {
 	double pNorth;
 	double pEast;
 };
- 
-class gpsConverterSimple {
+
+std::ostream &operator<<(std::ostream &os, posNE const &pos) {
+	return os << pos.pNorth << " (meters N) " << pos.pEast << " (meters E)";
+}
 	
-	static void meterDistFromLatLon(
-		const gpsLatLon& homeLoc, 
-		const gpsLatLon& newLoc,
+void meterDistFromLatLon(
+		const latLon& homeLoc, 
+		const latLon& newLoc,
 		posNE& d)
-	{
-		//! The x-dist is very easy.  Radius of the earth times angular difference:
-		phiLambda homeRad, newRad, diffRad;
-		homeRad.phi = homeLoc.lat*DEG2RAD;
-		homeRad.lambda = homeLoc.lon*DEG2RAD;
-		newRad.phi = newLoc.lat*DEG2RAD;
-		newRad.lambda = newLoc.lon*DEG2RAD;
-		
-		diffRad.phi = newRad.phi - homeRad.phi;
-		diffRad.lambda = newRad.lambda - homeRad.lambda;
-		
-		d.pNorth = R_EARTH * diffRad.phi;
-		d.pEast = R_EARTH * cos(homeRad.phi) * diffRad.lambda;		
-	}
+{
+	//! The x-dist is very easy.  Radius of the earth times angular difference:
+	phiLambda homeRad, newRad, diffRad;
+	homeRad.phi = homeLoc.lat*DEG2RAD;
+	homeRad.lambda = homeLoc.lon*DEG2RAD;
+	newRad.phi = newLoc.lat*DEG2RAD;
+	newRad.lambda = newLoc.lon*DEG2RAD;
 	
-	static void LatLonFromHomeDistance(
-		const posNE& d,
-		const gpsLatLon& homeLoc,
-		gpsLatLon& out)
-	{
-		phiLambda homeRad, outRad;
-		homeRad.phi = homeLoc.lat*DEG2RAD;
-		homeRad.lambda = homeLoc.lon*DEG2RAD;
-		
-		outRad.phi = homeRad.phi + d.pNorth/R_EARTH;
-		outRad.lambda = homeRad.lambda + d.pEast/(R_EARTH + cos(homeRad.phi));
-		
-		out.lat = outRad.phi*RAD2DEG;
-		out.lon = outRad.lambda*RAD2DEG;
-	}
+	diffRad.phi = newRad.phi - homeRad.phi;
+	diffRad.lambda = newRad.lambda - homeRad.lambda;
 	
-	 
-}; //! gpsConverterSimple
+	d.pNorth = R_EARTH * diffRad.phi;
+	d.pEast = R_EARTH * cos(homeRad.phi) * diffRad.lambda;		
+}
+
+void LatLonFromHomeDistance(
+	const posNE& d,
+	const latLon& homeLoc,
+	latLon& out)
+{
+	phiLambda homeRad, outRad;
+	homeRad.phi = homeLoc.lat*DEG2RAD;
+	homeRad.lambda = homeLoc.lon*DEG2RAD;
+	
+	outRad.phi = homeRad.phi + d.pNorth/R_EARTH;
+	double deltaE_rad = d.pEast/(R_EARTH*cos(homeRad.phi));
+	outRad.lambda = homeRad.lambda + deltaE_rad;
+	
+	out.lat = outRad.phi*RAD2DEG;
+	out.lon = outRad.lambda*RAD2DEG;
+}
  
 }; //! namespace simplegps
